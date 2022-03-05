@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:practice_firebase/firebase_options.dart';
-// import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
@@ -35,17 +34,17 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final CollectionReference _users = _firestore.collection('users');
+  // final Stream<QuerySnapshot> _userStream = _users.snapshots();
+  final Stream<QuerySnapshot> _userStream = _users.where("name", isEqualTo: "murakami").snapshots();
 
-  // CollectionReference _users = _firestore.collection('users');
-
-
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
+  Future<void> addUser() async{
+    await _users.add({
+      'name': '吉野ヶ里遺跡',
+      'age': 19
     });
+    print("USER情報を追加しました。");
   }
 
   @override
@@ -54,22 +53,35 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
+      body: StreamBuilder(
+        stream: _userStream,
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+
+
+          if(snapshot.hasError) {
+            return const Text("エラーが発生しました！");
+          } else if (snapshot.hasData && snapshot.data!.docs.isEmpty) {
+            return Text("ドキュメント！");
+          }else if (snapshot.connectionState == ConnectionState.waiting) {
+            return const CircularProgressIndicator();
+          }else {
+            List<QueryDocumentSnapshot> docs = snapshot.data!.docs;
+            return ListView(
+              children: docs.map((doc) {
+                Map<String,dynamic> data = doc.data() as Map<String,dynamic>;
+                String name = data["name"];
+                int age = data["age"];
+                return ListTile(
+                  title: Text(name),
+                  subtitle: Text(age.toString()),
+                );
+              }).toList(),
+            );
+          }
+        },
+    ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: addUser,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
